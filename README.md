@@ -1,5 +1,8 @@
 <h1 align="center">Bitcoin Tools</h1>
 <p align="center">Generate private, public keys and addresses for Bitcoin.</p>
+<p align="center"><img src="img/logo.png" width=300;/></p>
+<p align="center"><img src="img/log.png"/></p>
+
 
 ## TODO
 
