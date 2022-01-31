@@ -8,33 +8,32 @@ G = (
 p = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
 
 
-def inverse(x, p):
+def inverse(x: int, p: int) -> int:
+
     inv1 = 1
     inv2 = 0
     while p != 1 and p != 0:
         inv1, inv2 = inv2, inv1 - inv2 * (x // p)
         x, p = p, x % p
-
     return inv2
 
 
-def double(pt, p):
-
+def double(pt: int, p: tuple) -> tuple:
     if pt is None:
         return None
     (x, y) = pt
     if y == 0:
         return None
 
-        # Calculate 3*x^2/(2*y)  modulus p
+    # Calculate 3*x^2/(2*y)  modulus p
     slope = 3 * pow(x, 2, p) * inverse(2 * y, p)
-
     xsum = pow(slope, 2, p) - 2 * x
     ysum = slope * (x - xsum) - y
-    return (xsum % p, ysum % p)
+
+    return xsum % p, ysum % p
 
 
-def add(p1, p2, p):
+def add(p1: tuple, p2: tuple, p: tuple) -> tuple:
     if p1 is None or p2 is None:
         return None
     (x1, y1) = p1
@@ -44,10 +43,10 @@ def add(p1, p2, p):
     slope = (y1 - y2) * inverse(x1 - x2, p)
     xsum = pow(slope, 2, p) - (x1 + x2)
     ysum = slope * (x1 - xsum) - y1
-    return (xsum % p, ysum % p)
+    return xsum % p, ysum % p
 
 
-def multiply(a):
+def multiply(a: int) -> tuple:
     scale = G
     acc = None
     while a:
@@ -59,4 +58,3 @@ def multiply(a):
         scale = double(scale, p)
         a >>= 1
     return acc
-
