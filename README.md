@@ -1,6 +1,11 @@
 <h1 align="center">Bitcoin Tools</h1>
 <p align="center">Generate private, public keys and addresses for Bitcoin.</p>
 
+## TODO
+
+- [x] **Generation of private, public keys and addresses**
+- [ ] **Generation with randomness entropy with dice roll and card deck.**
+
 ## License
 ```
 MIT License
