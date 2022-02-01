@@ -24,12 +24,12 @@ def decompress_public_key(compressed_key: str) -> str:
         y = p - y
 
     rv = '04'
+    for _ in range(len(str(hex(y))[2:]) - len(str(hex(x))[2:])):
+        rv += '0'
     rv += str(hex(x))[2:]
     for _ in range(len(str(hex(x))[2:]) - len(str(hex(y))[2:])):
         rv += '0'
     rv += str(hex(y))[2:]
-    for _ in range(len(str(hex(y))[2:]) - len(str(hex(x))[2:])):
-        rv += '0'
     return rv
 
 
@@ -41,6 +41,7 @@ def compress_public_key(key: str) -> str:
 
 def get_address(key: str) -> str:
     if len(key) % 2 == 1:
+        # This if need to be tested
         key += '0'
     key_bytes = codecs.decode(key, 'hex_codec')
     return hash_ripemd160(hash_sha256(key_bytes)).hex()
@@ -56,9 +57,8 @@ def decode_address(address: str) -> str:
     return decode_base58check(address).hex()[2:]
 
 
-def encode_private_key(key: int) -> str:
+def encode_private_key(key: str) -> str:
     version = b'\x80'
-    key = str(hex(key)[2:])
     if len(key) % 2 == 1:
         key = '0' + key
     key_bytes = codecs.decode(key, 'hex_codec')
@@ -81,19 +81,24 @@ def hash_ripemd160(data: bytes) -> bytes:
     return hashlib.new('ripemd160', data).digest()
 
 
-def get_random_private_key() -> int:
-    return random.randint(0, n - 1)
+def get_random_private_key() -> str:
+    # Not sure if use p or n as maximum
+    private_key = str(hex(random.randint(0, n - 1))[2:])
+    for i in range(64 - len(private_key)):
+        private_key = '0' + private_key
+    return private_key
 
 
-def get_public_key(pr_key: int) -> str:
-    pub_key = elliptic_curve.multiply(pr_key)
+def get_public_key(pr_key: str) -> str:
+    pub_key = elliptic_curve.multiply(int(pr_key, 16))
     public_key_converted = f'04'
+    for i in range(len(str(hex(pub_key[1]))) - len(str(hex(pub_key[0])))):
+        public_key_converted += '0'
     public_key_converted += str(hex(int(pub_key[0])))[2:]
     for i in range(len(str(hex(pub_key[0]))) - len(str(hex(pub_key[1])))):
         public_key_converted += '0'
     public_key_converted += str(hex(int(pub_key[1])))[2:]
-    for i in range(len(str(hex(pub_key[1]))) - len(str(hex(pub_key[0])))):
-        public_key_converted += '0'
+
     return public_key_converted
 
 
@@ -117,7 +122,7 @@ def decode_base58check(data: str) -> bytes:
 
 
 private_key = get_random_private_key()
-print(f'Private key: {str(hex(private_key))[2:]}')
+print(f'Private key: {private_key}')
 
 encoded_private_key = encode_private_key(private_key)
 print(f'Encoded private key: {encoded_private_key}')
