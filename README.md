@@ -8,6 +8,8 @@
 
 - [x] **Generation of private, public keys and addresses**
 - [ ] **Generation with randomness entropy with dice roll and card deck.**
+- [ ] **Generation of vanity addresses**
+- [ ] **Generation of seed phrases**
 
 ## License
 ```
