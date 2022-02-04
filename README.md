@@ -10,7 +10,7 @@
 - [ ] **Generation with randomness entropy with dice roll and card deck.**
 - [ ] **Generation of vanity addresses**
 - [ ] **Generation of seed phrases**
-- [ ] **Optimalisation of generate public key function**
+- [ ] **Optimization of generate public key function**
 
 ## License
 ```
