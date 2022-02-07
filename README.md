@@ -9,6 +9,7 @@
 - [x] **Generation of private, public keys and addresses**
 - [x] **Generation of vanity addresses**
 - [x] **Generation of seed phrases**
+- [ ] **Add different languages for mnemonics**
 - [ ] **Generation with randomness entropy with dice roll and card deck.**
 - [ ] **Optimization of generate public key function**
 
