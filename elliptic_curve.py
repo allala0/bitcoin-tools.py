@@ -1,13 +1,3 @@
-n = int(1.158 * 10**77 - 1)
-
-G = (
-    0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
-    0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
-)
-
-p = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
-
-
 def inverse(x: int, p: int) -> int:
 
     inv1 = 1
@@ -18,12 +8,12 @@ def inverse(x: int, p: int) -> int:
     return inv2
 
 
-def double(pt: int, p: tuple) -> tuple:
+def double(pt: tuple, p: int) -> tuple:
     if pt is None:
-        return None
+        return
     (x, y) = pt
     if y == 0:
-        return None
+        return
 
     # Calculate 3*x^2/(2*y)  modulus p
     slope = 3 * pow(x, 2, p) * inverse(2 * y, p)
@@ -33,7 +23,7 @@ def double(pt: int, p: tuple) -> tuple:
     return xsum % p, ysum % p
 
 
-def add(p1: tuple, p2: tuple, p: tuple) -> tuple:
+def add(p1: tuple, p2: tuple, p: int) -> tuple:
     if p1 is None or p2 is None:
         return None
     (x1, y1) = p1
@@ -46,8 +36,8 @@ def add(p1: tuple, p2: tuple, p: tuple) -> tuple:
     return xsum % p, ysum % p
 
 
-def multiply(a: int) -> tuple:
-    scale = G
+def multiply(gen: tuple, a: int, p: int) -> tuple:
+    scale = gen
     acc = None
     while a:
         if a & 1:
