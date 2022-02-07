@@ -7,9 +7,9 @@
 ## TODO
 
 - [x] **Generation of private, public keys and addresses**
+- [x] **Generation of vanity addresses**
+- [x] **Generation of seed phrases**
 - [ ] **Generation with randomness entropy with dice roll and card deck.**
-- [ ] **Generation of vanity addresses**
-- [ ] **Generation of seed phrases**
 - [ ] **Optimization of generate public key function**
 
 ## License
