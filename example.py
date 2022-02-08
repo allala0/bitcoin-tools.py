@@ -2,7 +2,7 @@ import bitcoin_tools
 
 
 def test():
-    private_key = bitcoin_tools.get_random_private_key()
+    private_key = bitcoin_tools.generate_random_private_key()
     print(f'Private key: {private_key}')
 
     encoded_private_key = bitcoin_tools.encode_private_key(private_key)
@@ -48,7 +48,6 @@ def test():
     print(f'Decoded decompressed address: {decoded_decompressed_address}')
 
     mnemonic = bitcoin_tools.generate_mnemonic(12)
-    mnemonic = 'army van defense carry jealous true garbage claim echo media make crunch'
     print(f'Mnemonic: {mnemonic}')
 
     root_seed = bitcoin_tools.generate_seed(mnemonic, passphrase='')
@@ -69,11 +68,8 @@ def test():
     grandchild_extended_private_key = bitcoin_tools.generate_child_extended_key('private', child_extended_private_key['private_key'], child_extended_private_key['chain_code'], "11")
     print(f'Grandchild extended private key: {grandchild_extended_private_key}')
 
-    print(bitcoin_tools.get_compressed_public_key(grandchild_extended_private_key['private_key']))
-
-    # vanity_address = bitcoin_tools.generate_vanity_address('x', any_case=True)
-    # print(f'Vanity address: {vanity_address}')
-
+    vanity_address = bitcoin_tools.generate_vanity_address('x', any_case=True)
+    print(f'Vanity address: {vanity_address}')
 
 
 test()

@@ -16,15 +16,15 @@ G = (
 p = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
 
 
-def fix_hex_len(element, length):
+def fix_str_len(element: str, length: int) -> str:
     for _ in range(length - len(element)):
         element = '0' + element
     return element
 
 
-def hex_to_bytes(hex_value, min_num_of_bytes=0):
+def hex_to_bytes(hex_value: str, min_num_of_bytes: int = 0):
     if type(hex_value) != str:
-        raise Exception('Hex value need to be string.')
+        raise Exception('Hex value need to be hex string.')
     if len(hex_value) % 2 == 1:
         hex_value = '0' + hex_value
 
@@ -35,8 +35,14 @@ def hex_to_bytes(hex_value, min_num_of_bytes=0):
     return rv
 
 
-def compress_private_key(key: str) -> str:
-    return key + '01'
+def compress_private_key(private_key: str) -> str:
+    return private_key + '01'
+
+
+def decompress_private_key(private_key: str) -> str:
+    if private_key[-2:] != '01':
+        raise Exception('Compressed private key must end with 01')
+    return private_key[:-2]
 
 
 def decompress_public_key(compressed_key: str) -> str:
@@ -49,15 +55,15 @@ def decompress_public_key(compressed_key: str) -> str:
         y = p - y
 
     rv = '04'
-    rv += fix_hex_len(hex(x)[2:], 64)
-    rv += fix_hex_len(hex(y)[2:], 64)
+    rv += fix_str_len(hex(x)[2:], 64)
+    rv += fix_str_len(hex(y)[2:], 64)
     return rv
 
 
 def compress_public_key(key: str) -> str:
     rv = key[2:][:int((len(key) - 2) / 2)]
     rv = '03' + rv if int(key[2:][int((len(key) - 2) / 2):], 16) % 2 else '02' + rv
-    rv = fix_hex_len(rv, 66)
+    rv = fix_str_len(rv, 66)
     return rv
 
 
@@ -69,10 +75,22 @@ def get_address(key: str) -> str:
     return hash_ripemd160(hash_sha256(key_bytes).digest()).hexdigest()
 
 
-def encode_address(address: str) -> str:
-    version = b'\x00'
+def encode_address(address: str, p2sh: bool = False, test_net: bool = False) -> str:
+    version = b'\x05' if p2sh else b'\x00'
+    if test_net:
+        version = b'\x6f'
     address_bytes = codecs.decode(address, 'hex_codec')
     return encode_base58check(address_bytes, version)
+
+
+# TODO!!!
+def encrypt_private_key_bip38(private_key: str, password: str) -> str:
+    pass
+
+
+# TODO!!!
+def decrypt_private_key_bip38(private_key: str, password: str) -> str:
+    pass
 
 
 def decode_address(address: str) -> str:
@@ -103,17 +121,17 @@ def hash_ripemd160(data: bytes) -> bytes:
     return hashlib.new('ripemd160', data)
 
 
-def get_random_private_key() -> str:
+def generate_random_private_key() -> str:
     # Not sure if use p or n as maximum
-    private_key = fix_hex_len(hex(random.randint(0, n - 1))[2:], 64)
+    private_key = fix_str_len(hex(random.randint(0, n - 1))[2:], 64)
     return private_key
 
 
 def get_public_key(private_key: str) -> str:
     public_key = elliptic_curve.multiply(G, int(private_key, 16), p)
     public_key_converted = f'04'
-    public_key_converted += fix_hex_len(hex(int(public_key[0]))[2:], 64)
-    public_key_converted += fix_hex_len(hex(int(public_key[1]))[2:], 64)
+    public_key_converted += fix_str_len(hex(int(public_key[0]))[2:], 64)
+    public_key_converted += fix_str_len(hex(int(public_key[1]))[2:], 64)
 
     return public_key_converted
 
@@ -122,17 +140,12 @@ def get_compressed_public_key(private_key: str) -> str:
     return compress_public_key(get_public_key(private_key))
 
 
-# def encode_public_key(public_key):
-#     return encode_base58check(bytes.fromhex(public_key), bytes.fromhex('00'))
-#     # return encode_base58(bytes.fromhex('a6341e'))
-
-
 def encode_base58(data: bytes) -> str:
     return base58.b58encode(data).decode()
 
 
-# def decode_base58(data):
-#     return base58.b58decode(data).decode()
+def decode_base58(data: str) -> bytes:
+    return base58.b58decode(data)
 
 
 def encode_base58check(data: bytes, version: bytes) -> str:
@@ -141,8 +154,7 @@ def encode_base58check(data: bytes, version: bytes) -> str:
 
 
 def decode_base58check(data: str) -> bytes:
-    decoded = base58.b58decode_check(data)
-    return decoded
+    return base58.b58decode_check(data)
 
 
 def generate_vanity_address(searched_value: str, any_case: bool = False, any_position: bool = False) -> dict:
@@ -152,7 +164,7 @@ def generate_vanity_address(searched_value: str, any_case: bool = False, any_pos
             raise Exception(f'Argument searched_value="{searched_value}" contains non Base58 characters.')
 
     while True:
-        private_key = get_random_private_key()
+        private_key = generate_random_private_key()
         compressed_private_key = compress_private_key(private_key)
         encoded_compressed_private_key = encode_private_key(compressed_private_key)
 
@@ -186,7 +198,7 @@ def generate_mnemonic(words_num: int) -> str:
     hash_ = hash_sha256(random_data_bytes).hexdigest()
     hash_bin = bin(int(hash_, 16))[2:]
 
-    hash_bin = fix_hex_len(hash_bin, 256)
+    hash_bin = fix_str_len(hash_bin, 256)
 
     checksum = hash_bin[:words_num // 3]
     data_with_checksum = random_data + checksum
@@ -217,7 +229,7 @@ def mnemonic_to_bin(mnemonic: str) -> str:
     for word in mnemonic.split(' '):
         for index in range(len(word_list)):
             if word == word_list[index]:
-                index_bin = fix_hex_len(bin(index)[2:], 11)
+                index_bin = fix_str_len(bin(index)[2:], 11)
                 indexes += index_bin
     return indexes
 
@@ -232,7 +244,7 @@ def generate_master_private_key(seed: str) -> dict:
     hash = hmac.new(key, message, 'sha512').hexdigest()
 
     hash_bin = bin(int(hash, 16))[2:]
-    hash_bin = fix_hex_len(hash_bin, 512)
+    hash_bin = fix_str_len(hash_bin, 512)
 
     master_private_key = hex(int(hash_bin[:256], 2))[2:]
     master_chain_code = hex(int(hash_bin[256:], 2))[2:]
@@ -274,7 +286,7 @@ def generate_child_extended_key(version: str, parent_private_key: str, parent_ch
     return {'private_key': child_private_key, 'chain_code': child_chain_code}
 
 
-def encode_extended_key(version: str, key: str, chain_code: str, depth: int, index: int, parent_public_key: str = None):
+def encode_extended_key(version: str, key: str, chain_code: str, depth: int, index: int, parent_public_key: str = None) -> str:
     if version == 'private':
         key = '00' + key
         version_code = b'\x04\x88\xad\xe4'
