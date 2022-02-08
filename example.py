@@ -48,13 +48,32 @@ def test():
     print(f'Decoded decompressed address: {decoded_decompressed_address}')
 
     mnemonic = bitcoin_tools.generate_mnemonic(12)
+    mnemonic = 'army van defense carry jealous true garbage claim echo media make crunch'
     print(f'Mnemonic: {mnemonic}')
 
-    seed = bitcoin_tools.generate_seed(mnemonic)
-    print(f'Seed: {seed}')
+    root_seed = bitcoin_tools.generate_seed(mnemonic, passphrase='')
+    print(f'Seed: {root_seed}')
 
-    vanity_address = bitcoin_tools.generate_vanity_address('x', any_case=True)
-    print(f'Vanity address: {vanity_address}')
+    master_extended_private_key = bitcoin_tools.generate_master_private_key(root_seed)
+    print(f'Master extended private key: {master_extended_private_key}')
+
+    encoded_master_extended_key = bitcoin_tools.encode_extended_key('private',  master_extended_private_key['private_key'], master_extended_private_key['chain_code'], 0, 0)
+    print(f'Encoded extended master private key: {encoded_master_extended_key}')
+
+    encoded_master_extended_key = bitcoin_tools.encode_extended_key('public',  bitcoin_tools.get_compressed_public_key(master_extended_private_key['private_key']), master_extended_private_key['chain_code'], 0, 0)
+    print(f'Encoded extended master public key: {encoded_master_extended_key}')
+
+    child_extended_private_key = bitcoin_tools.generate_child_extended_key('private', master_extended_private_key['private_key'], master_extended_private_key['chain_code'], "2137'")
+    print(f'Child extended private key: {child_extended_private_key}')
+
+    grandchild_extended_private_key = bitcoin_tools.generate_child_extended_key('private', child_extended_private_key['private_key'], child_extended_private_key['chain_code'], "11")
+    print(f'Grandchild extended private key: {grandchild_extended_private_key}')
+
+    print(bitcoin_tools.get_compressed_public_key(grandchild_extended_private_key['private_key']))
+
+    # vanity_address = bitcoin_tools.generate_vanity_address('x', any_case=True)
+    # print(f'Vanity address: {vanity_address}')
+
 
 
 test()
