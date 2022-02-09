@@ -6,14 +6,17 @@ import codecs
 import binascii
 import hmac
 
-n = int(1.158 * 10**77 - 1)
-
+n = 115792089237316195423570985008687907852837564279074904382605163141518161494337
 G = (
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
     0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
      )
 
 p = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 - 1
+
+
+def hash160(data: bytes):
+    return hash_ripemd160(hash_sha256(data).digest())
 
 
 def fix_str_len(element: str, length: int) -> str:
@@ -72,7 +75,7 @@ def get_address(key: str) -> str:
         # This if need to be tested
         key += '0'
     key_bytes = codecs.decode(key, 'hex_codec')
-    return hash_ripemd160(hash_sha256(key_bytes).digest()).hexdigest()
+    return hash160(key_bytes).hexdigest()
 
 
 def encode_address(address: str, p2sh: bool = False, test_net: bool = False) -> str:
@@ -157,11 +160,11 @@ def decode_base58check(data: str) -> bytes:
     return base58.b58decode_check(data)
 
 
-def generate_vanity_address(searched_value: str, any_case: bool = False, any_position: bool = False) -> dict:
+def generate_vanity_address(search_value: str, any_case: bool = False, any_position: bool = False) -> dict:
     alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-    for letter in searched_value:
+    for letter in search_value:
         if letter not in alphabet:
-            raise Exception(f'Argument searched_value="{searched_value}" contains non Base58 characters.')
+            raise Exception(f'Argument searched_value="{search_value}" contains non Base58 characters.')
 
     while True:
         private_key = generate_random_private_key()
@@ -173,10 +176,10 @@ def generate_vanity_address(searched_value: str, any_case: bool = False, any_pos
         compressed_address = get_address(compressed_public_key)
         encoded_compressed_address = encode_address(compressed_address)
 
-        searched_value_buffer = searched_value.lower() if any_case else searched_value
+        searched_value_buffer = search_value.lower() if any_case else search_value
 
         address_buffer = encoded_compressed_address.lower() if any_case else encoded_compressed_address
-        check = searched_value_buffer in address_buffer if any_position else searched_value_buffer == address_buffer[1: len(searched_value) + 1]
+        check = searched_value_buffer in address_buffer if any_position else searched_value_buffer == address_buffer[1: len(search_value) + 1]
 
         if check:
             vanity_address = {'private key': encoded_compressed_private_key, 'public key': compressed_public_key, 'address': encoded_compressed_address}
@@ -203,7 +206,14 @@ def generate_mnemonic(words_num: int) -> str:
     checksum = hash_bin[:words_num // 3]
     data_with_checksum = random_data + checksum
 
-    mnemonic_index = [int(data_with_checksum[i * 11:i * 11 + 11], 2) for i in range(len(data_with_checksum) // 11)]
+    mnemonic_str = mnemonic_from_bin(data_with_checksum)
+
+    return mnemonic_str.strip()
+
+
+def mnemonic_from_bin(mnemonic_bin: str) -> str:
+
+    mnemonic_index = [int(mnemonic_bin[i * 11:i * 11 + 11], 2) for i in range(len(mnemonic_bin) // 11)]
 
     with open('bip39/english.txt') as file:
         word_list = file.read().split('\n')
@@ -238,7 +248,7 @@ def generate_seed(mnemonic: str, passphrase: str = '') -> str:
     return binascii.hexlify(hashlib.pbkdf2_hmac('sha512', bytes(mnemonic.strip().encode()), bytes(f'mnemonic{passphrase}'.encode()), 2048)).decode()
 
 
-def generate_master_private_key(seed: str) -> dict:
+def generate_master_private_key(seed: str) -> str:
     message = bytes.fromhex(seed)
     key = bytes('Bitcoin seed'.encode())
     hash = hmac.new(key, message, 'sha512').hexdigest()
@@ -246,13 +256,16 @@ def generate_master_private_key(seed: str) -> dict:
     hash_bin = bin(int(hash, 16))[2:]
     hash_bin = fix_str_len(hash_bin, 512)
 
-    master_private_key = hex(int(hash_bin[:256], 2))[2:]
-    master_chain_code = hex(int(hash_bin[256:], 2))[2:]
+    master_private_key = fix_str_len(hex(int(hash_bin[:256], 2))[2:], 64)
+    master_chain_code = fix_str_len(hex(int(hash_bin[256:], 2))[2:], 64)
 
-    return {'private_key': master_private_key, 'chain_code': master_chain_code}
+    # return {'private_key': master_private_key, 'chain_code': master_chain_code}
+    return f'{master_chain_code}{master_private_key}'
 
 
-def generate_child_extended_key(version: str, parent_private_key: str, parent_chain_code: str, index: int or str) -> dict:
+def generate_child_extended_key(parent_extended_private_key: str, index: int or str, version: str = 'private') -> str:
+    parent_private_key = parent_extended_private_key[64:]
+    parent_chain_code = parent_extended_private_key[:64]
     if type(index) == str:
         if index[len(index) - 1] == "'":
             index = int(index[0:len(index) - 1], 10) + 2**31
@@ -280,13 +293,17 @@ def generate_child_extended_key(version: str, parent_private_key: str, parent_ch
 
     hash = hmac.new(key, message, 'sha512').hexdigest()
     # Idk if it should be %n or not in child_private_key
-    child_private_key = hex(int(parent_private_key, 16) + int(hash[:64], 16))[2:]
+    child_private_key = fix_str_len(hex((int(parent_private_key, 16) + int(hash[:64], 16)) % n)[2:], 64)
     child_chain_code = hash[64:]
 
-    return {'private_key': child_private_key, 'chain_code': child_chain_code}
+    return f'{child_chain_code}{child_private_key}'
 
 
-def encode_extended_key(version: str, key: str, chain_code: str, depth: int, index: int, parent_public_key: str = None) -> str:
+def encode_extended_key(extended_key: str, version: str = 'private', depth: int = 0, index: int = 0, parent_public_key: str = None) -> str:
+
+    key = extended_key[64:]
+    chain_code = extended_key[:64]
+
     if version == 'private':
         key = '00' + key
         version_code = b'\x04\x88\xad\xe4'
@@ -298,8 +315,31 @@ def encode_extended_key(version: str, key: str, chain_code: str, depth: int, ind
     if parent_public_key is None:
         parent_fingerprint = bytes(4)
     else:
-        parent_fingerprint = hash_ripemd160(parent_public_key.encode())[:4]
+        parent_fingerprint = hash160(hex_to_bytes(parent_public_key)).digest()[:4]
 
-    extended_key_bytes = hex_to_bytes(str(depth), min_num_of_bytes=4) + parent_fingerprint + hex_to_bytes(str(index)) + hex_to_bytes(chain_code) + hex_to_bytes(key)
+    extended_key_bytes = hex_to_bytes(str(depth)) + parent_fingerprint + hex_to_bytes(str(index), min_num_of_bytes=4) + hex_to_bytes(chain_code) + hex_to_bytes(key)
 
     return encode_base58check(extended_key_bytes, version_code)
+
+
+def parse_extended_key(extended_key: str) -> dict:
+    return {'key': extended_key[64:], 'chain_code': extended_key[:64]}
+
+
+def generate_extended_key_from_derivation_path():
+    pass
+
+
+def get_extended_public_key(extended_private_key: str) -> str:
+    return parse_extended_key(extended_private_key)['chain_code'] + get_compressed_public_key(parse_extended_key(extended_private_key)['key'])
+
+
+def generate_extended_key_bip44(master_extended_private_key: str, coin: int or str = "0'", account: int or str = "0'", internal_external: int or str = "0", address: int or str = "0"):
+
+    purpose_extended_private_key = generate_child_extended_key(master_extended_private_key, "44'")
+    coin_extended_private_key = generate_child_extended_key(purpose_extended_private_key, coin)
+    account_extended_private_key = generate_child_extended_key(coin_extended_private_key, account)
+    internal_external_extended_private_key = generate_child_extended_key(account_extended_private_key, internal_external)
+    address_extended_private_key = generate_child_extended_key(internal_external_extended_private_key, address)
+
+    return address_extended_private_key

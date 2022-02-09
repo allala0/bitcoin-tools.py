@@ -1,7 +1,7 @@
 import bitcoin_tools
 
 
-def test():
+def example():
     private_key = bitcoin_tools.generate_random_private_key()
     print(f'Private key: {private_key}')
 
@@ -47,7 +47,10 @@ def test():
     decoded_decompressed_address = bitcoin_tools.decode_address(encoded_decompressed_address)
     print(f'Decoded decompressed address: {decoded_decompressed_address}')
 
+    print()
+
     mnemonic = bitcoin_tools.generate_mnemonic(12)
+    # mnemonic = 'army van defense carry jealous true garbage claim echo media make crunch'
     print(f'Mnemonic: {mnemonic}')
 
     root_seed = bitcoin_tools.generate_seed(mnemonic, passphrase='')
@@ -56,20 +59,37 @@ def test():
     master_extended_private_key = bitcoin_tools.generate_master_private_key(root_seed)
     print(f'Master extended private key: {master_extended_private_key}')
 
-    encoded_master_extended_key = bitcoin_tools.encode_extended_key('private',  master_extended_private_key['private_key'], master_extended_private_key['chain_code'], 0, 0)
-    print(f'Encoded extended master private key: {encoded_master_extended_key}')
+    master_extended_public_key = bitcoin_tools.get_extended_public_key(master_extended_private_key)
+    print(f'Master extended private key: {master_extended_public_key}')
 
-    encoded_master_extended_key = bitcoin_tools.encode_extended_key('public',  bitcoin_tools.get_compressed_public_key(master_extended_private_key['private_key']), master_extended_private_key['chain_code'], 0, 0)
-    print(f'Encoded extended master public key: {encoded_master_extended_key}')
+    encoded_master_extended_private_key = bitcoin_tools.encode_extended_key(master_extended_private_key)
+    print(f'Master Encoded extended private key: {encoded_master_extended_private_key}')
 
-    child_extended_private_key = bitcoin_tools.generate_child_extended_key('private', master_extended_private_key['private_key'], master_extended_private_key['chain_code'], "2137'")
+    encoded_master_extended_public_key = bitcoin_tools.encode_extended_key(master_extended_public_key, version='public')
+    print(f'Master encoded extended public key: {encoded_master_extended_public_key}')
+
+    child_extended_private_key = bitcoin_tools.generate_child_extended_key(master_extended_private_key, 0)
     print(f'Child extended private key: {child_extended_private_key}')
 
-    grandchild_extended_private_key = bitcoin_tools.generate_child_extended_key('private', child_extended_private_key['private_key'], child_extended_private_key['chain_code'], "11")
-    print(f'Grandchild extended private key: {grandchild_extended_private_key}')
+    child_extended_public_key = bitcoin_tools.get_extended_public_key(child_extended_private_key)
+    print(f'Child extended public key: {child_extended_public_key}')
 
-    vanity_address = bitcoin_tools.generate_vanity_address('x', any_case=True)
+    child_encoded_extended_private_key = bitcoin_tools.encode_extended_key(child_extended_private_key, depth=1, index=0, parent_public_key=bitcoin_tools.parse_extended_key(master_extended_public_key)['key'])
+    print(f'Child encoded extended private key: {child_encoded_extended_private_key}')
+
+    child_encoded_extended_public_key = bitcoin_tools.encode_extended_key(child_extended_public_key, depth=1, index=0, parent_public_key=bitcoin_tools.parse_extended_key(master_extended_public_key)['key'], version='public')
+    print(f'Child encoded extended public key: {child_encoded_extended_public_key}')
+
+    print()
+
+    extended_private_key_from_bip44 = bitcoin_tools.generate_extended_key_bip44(master_extended_private_key)
+    print(f'Extended private key generated from bip44: {extended_private_key_from_bip44}')
+
+    print()
+
+    vanity_address = bitcoin_tools.generate_vanity_address('', any_case=True)
     print(f'Vanity address: {vanity_address}')
 
 
-test()
+if __name__ == '__main__':
+    example()
