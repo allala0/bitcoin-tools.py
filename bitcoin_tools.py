@@ -96,11 +96,12 @@ def encode_address(address: str, p2sh: bool = False, test_net: bool = False) -> 
 
 # TODO!!!
 def encrypt_private_key_bip38(private_key: str, password: str) -> str:
+    version = b'\x01\x43'
     pass
 
 
 # TODO!!!
-def decrypt_private_key_bip38(private_key: str, password: str) -> str:
+def decrypt_private_key_bip38(encrypted_private_key: str, password: str) -> str:
     pass
 
 
@@ -288,20 +289,17 @@ def generate_child_extended_key(parent_extended_private_key: str, index: int or 
         if version == 'public':
             raise Exception('indexes from 2**31 to 2**32-1 are reserved for hardened extended private keys only.')
     if version == 'public':
-        parent_public_key = get_compressed_public_key(parent_private_key)
-        parent_private_key = parent_public_key
-        n_ = 1
-    if version == 'private':
-        n_ = n
+        parent_public_key = parent_private_key
+    else:
         if index >= 2**31:
             parent_public_key = '00' + parent_private_key
         else:
             parent_public_key = get_compressed_public_key(parent_private_key)
+
     key = hex_to_bytes(parent_chain_code)
     message = hex_to_bytes(parent_public_key) + hex_to_bytes(hex(index)[2:], min_num_of_bytes=4)
 
     hash = hmac.new(key, message, 'sha512').hexdigest()
-    # Idk if it should be %n or not in child_private_key
 
     if version == 'private':
         child_key = fix_str_len(hex((int(parent_private_key, 16) + int(hash[:64], 16)) % n)[2:], 64)
@@ -355,17 +353,17 @@ def generate_extended_key_from_derivation_path(seed: str, derivation_path: str) 
 
     derivation_path_list = derivation_path.split('/')
 
-    if derivation_path_list[0] == 'm':
-        pass
-    elif derivation_path_list[0] == 'M':
-        pass
-    else:
+    if derivation_path_list[0] not in ['m', 'M']:
         raise Exception('First character of derivation path need to be m or M')
 
     last_extended_private_key = generate_master_private_key(seed)
     for index in derivation_path_list[1:]:
         last_extended_private_key = generate_child_extended_key(last_extended_private_key, index)
-    return last_extended_private_key
+
+    if derivation_path_list[0] == 'm':
+        return last_extended_private_key
+    else:
+        return get_extended_public_key(last_extended_private_key)
 
 
 def get_extended_public_key(extended_private_key: str) -> str:

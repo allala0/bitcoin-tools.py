@@ -74,7 +74,7 @@ def example():
     child_extended_public_key = bitcoin_tools.get_extended_public_key(child_extended_private_key)
     print(f'Child extended public key: {child_extended_public_key}')
 
-    child_extended_public_key_from_public_key = bitcoin_tools.generate_child_extended_key(master_extended_private_key, "0", version='public')
+    child_extended_public_key_from_public_key = bitcoin_tools.generate_child_extended_key(master_extended_public_key, "0", version='public')
     print(f'Child extended public key from public key: {child_extended_public_key_from_public_key}')
 
     child_encoded_extended_private_key = bitcoin_tools.encode_extended_key(child_extended_private_key, depth=1, index="0", parent_public_key=bitcoin_tools.parse_extended_key(master_extended_public_key)['key'])
