@@ -42,6 +42,14 @@ def compress_private_key(private_key: str) -> str:
     return private_key + '01'
 
 
+def point_to_public_key(point: tuple) -> str:
+    return f'04{hex(point[0])[2:]}{hex(point[1])[2:]}'
+
+
+def public_key_to_point(public_key: str) -> tuple:
+    return int(public_key[2:][:64], 16), int(public_key[2:][64:], 16)
+
+
 def decompress_private_key(private_key: str) -> str:
     if private_key[-2:] != '01':
         raise Exception('Compressed private key must end with 01')
@@ -244,7 +252,7 @@ def mnemonic_to_bin(mnemonic: str) -> str:
     return indexes
 
 
-def generate_seed(mnemonic: str, passphrase: str = '') -> str:
+def get_seed(mnemonic: str, passphrase: str = '') -> str:
     return binascii.hexlify(hashlib.pbkdf2_hmac('sha512', bytes(mnemonic.strip().encode()), bytes(f'mnemonic{passphrase}'.encode()), 2048)).decode()
 
 
@@ -259,7 +267,6 @@ def generate_master_private_key(seed: str) -> str:
     master_private_key = fix_str_len(hex(int(hash_bin[:256], 2))[2:], 64)
     master_chain_code = fix_str_len(hex(int(hash_bin[256:], 2))[2:], 64)
 
-    # return {'private_key': master_private_key, 'chain_code': master_chain_code}
     return f'{master_chain_code}{master_private_key}'
 
 
@@ -283,7 +290,9 @@ def generate_child_extended_key(parent_extended_private_key: str, index: int or 
     if version == 'public':
         parent_public_key = get_compressed_public_key(parent_private_key)
         parent_private_key = parent_public_key
+        n_ = 1
     if version == 'private':
+        n_ = n
         if index >= 2**31:
             parent_public_key = '00' + parent_private_key
         else:
@@ -293,13 +302,29 @@ def generate_child_extended_key(parent_extended_private_key: str, index: int or 
 
     hash = hmac.new(key, message, 'sha512').hexdigest()
     # Idk if it should be %n or not in child_private_key
-    child_private_key = fix_str_len(hex((int(parent_private_key, 16) + int(hash[:64], 16)) % n)[2:], 64)
+
+    if version == 'private':
+        child_key = fix_str_len(hex((int(parent_private_key, 16) + int(hash[:64], 16)) % n)[2:], 64)
+    else:
+        p1 = public_key_to_point(decompress_public_key(parent_public_key))
+        p2 = public_key_to_point(get_public_key(hash[:64]))
+        child_point = elliptic_curve.add(p1, p2, p)
+        child_key = compress_public_key(point_to_public_key(child_point))
     child_chain_code = hash[64:]
 
-    return f'{child_chain_code}{child_private_key}'
+    return f'{child_chain_code}{child_key}'
 
 
-def encode_extended_key(extended_key: str, version: str = 'private', depth: int = 0, index: int = 0, parent_public_key: str = None) -> str:
+def encode_extended_key(extended_key: str, version: str = 'private', depth: str or int = 0, index: str or int = 0, parent_public_key: str = None) -> str:
+
+    index = str(index)
+    depth = str(depth)
+
+    if index[len(index) - 1] == "'":
+        index = int(index[0:len(index) - 1], 10) + 2 ** 31
+    else:
+        index = int(index, 10)
+    index = hex(index)[2:]
 
     key = extended_key[64:]
     chain_code = extended_key[:64]
@@ -317,7 +342,7 @@ def encode_extended_key(extended_key: str, version: str = 'private', depth: int 
     else:
         parent_fingerprint = hash160(hex_to_bytes(parent_public_key)).digest()[:4]
 
-    extended_key_bytes = hex_to_bytes(str(depth)) + parent_fingerprint + hex_to_bytes(str(index), min_num_of_bytes=4) + hex_to_bytes(chain_code) + hex_to_bytes(key)
+    extended_key_bytes = hex_to_bytes(str(depth)) + parent_fingerprint + hex_to_bytes(index, min_num_of_bytes=4) + hex_to_bytes(chain_code) + hex_to_bytes(key)
 
     return encode_base58check(extended_key_bytes, version_code)
 
@@ -326,8 +351,21 @@ def parse_extended_key(extended_key: str) -> dict:
     return {'key': extended_key[64:], 'chain_code': extended_key[:64]}
 
 
-def generate_extended_key_from_derivation_path():
-    pass
+def generate_extended_key_from_derivation_path(seed: str, derivation_path: str) -> str:
+
+    derivation_path_list = derivation_path.split('/')
+
+    if derivation_path_list[0] == 'm':
+        pass
+    elif derivation_path_list[0] == 'M':
+        pass
+    else:
+        raise Exception('First character of derivation path need to be m or M')
+
+    last_extended_private_key = generate_master_private_key(seed)
+    for index in derivation_path_list[1:]:
+        last_extended_private_key = generate_child_extended_key(last_extended_private_key, index)
+    return last_extended_private_key
 
 
 def get_extended_public_key(extended_private_key: str) -> str:
@@ -335,6 +373,10 @@ def get_extended_public_key(extended_private_key: str) -> str:
 
 
 def generate_extended_key_bip44(master_extended_private_key: str, coin: int or str = "0'", account: int or str = "0'", internal_external: int or str = "0", address: int or str = "0"):
+    coin = str(coin)
+    account = str(account)
+    internal_external = str(internal_external)
+    address = str(address)
 
     purpose_extended_private_key = generate_child_extended_key(master_extended_private_key, "44'")
     coin_extended_private_key = generate_child_extended_key(purpose_extended_private_key, coin)
